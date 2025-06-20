@@ -640,3 +640,15 @@ body {
   margin: auto;
 }
 
+.thumbnail {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.file-title {
+  font-size: 14px;
+  text-align: center;
+  margin: 4px 0;
+}
