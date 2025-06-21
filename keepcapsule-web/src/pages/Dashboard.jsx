@@ -177,7 +177,7 @@ export default function Dashboard() {
           >
             <option value="">Select type</option>
             <option value="image">Image or Video</option>
-            <option value="document">Document</option>
+            <option value="document">Document or Notes</option>
           </select>
           <button className="btn-primary" onClick={handleUpload} style={{ width: '100px', height: '36px', fontSize: '0.9rem' }}>Upload</button>
         </div>
