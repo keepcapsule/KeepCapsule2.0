@@ -9,6 +9,8 @@ import Footer from './components/Footer.jsx';
 import ResetPassword from './pages/ResetPassword';
 import ForgotPassword from './pages/ForgotPassword';
 import SignUp from './pages/SignUp.jsx';
+import FAQ from './pages/FAQ.jsx';
+import About from './pages/About.jsx';
 
 export default function App() {
   return (
@@ -22,6 +24,8 @@ export default function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/signup" element={<SignUp />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/faq" element={<FAQ />} />
       </Routes>
       <Footer />
     </Router>

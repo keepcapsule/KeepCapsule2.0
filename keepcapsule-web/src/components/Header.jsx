@@ -29,13 +29,15 @@ export default function Header() {
       <div className="hamburger" onClick={toggleMenu}>☰</div>
 
       <nav className={`nav-links ${menuOpen ? 'show' : ''}`}>
-        <Link to="/">Home</Link>
+        <a href="/">Home</a>
+        <a href="/faq">FAQ</a>
+        <a href="/about">About</a>
 
         {userEmail ? (
           <>
             <Link to="/dashboard">Dashboard</Link>
             <span className="user-email">{userEmail}</span>
-            <button onClick={handleLogout}>Logout</button>
+            <button className="logout-btn" onClick={handleLogout}>Logout</button>
           </>
         ) : (
           <>
