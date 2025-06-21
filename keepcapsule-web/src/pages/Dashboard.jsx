@@ -14,6 +14,7 @@ import { uploadFileToS3 } from '../utils/uploadFileToS3';
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const API_BASE = 'https://xkl1o711jk.execute-api.eu-west-1.amazonaws.com/prod';
+const s3BaseUrl = "https://checkoutapistack-keepcapsulefilebucketd4376c59-troas1azkumx.s3.amazonaws.com";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -41,9 +42,21 @@ export default function Dashboard() {
   const fetchFiles = async (userEmail) => {
     try {
       const res = await fetch(`${API_BASE}/get-files?email=${encodeURIComponent(userEmail)}`);
+      console.log('✅ GET FILES STATUS:', res.status);
+  
       if (!res.ok) throw new Error('Bad response from get-files');
+  
       const data = await res.json();
-      setFiles(data.files || []);
+      console.log('📦 Fetched files:', data);
+  
+      const bucketName = `keepcapsulefilebucketd4376c59-troas1azkumx-${userEmail}`;
+  
+      const filesWithUrls = (data.files || []).map(file => ({
+        ...file,
+        url: `https://checkoutapistack-keepcapsulefilebucketd4376c59-troas1azkumx.s3.amazonaws.com/${file.key}`
+      }));
+  
+      setFiles(filesWithUrls);
       setUserMeta(data.meta || {});
     } catch (err) {
       console.error('❌ Error fetching files:', err);
@@ -220,15 +233,16 @@ export default function Dashboard() {
         {filteredFiles.map(file => (
           <div key={file.key} className="file-card" style={{ border: '1px solid #ccc', padding: '10px', width: '120px', borderRadius: '6px', textAlign: 'center' }}>
             {isImage(file) ? (
-              <img
-                src={file.url}
-                alt={file.title}
-                style={{ width: '100px', height: '100px', objectFit: 'cover', cursor: 'pointer', borderRadius: '4px' }}
-                onClick={() => {
-                  setLightboxImage(file.url);
-                  setLightboxOpen(true);
-                }}
-              />
+             <img
+             src={file.url}
+             alt={file.title}
+             crossOrigin="anonymous"
+             style={{ width: '100px', height: '100px', objectFit: 'cover', cursor: 'pointer', borderRadius: '4px' }}
+             onClick={() => {
+               setLightboxImage(file.url);
+               setLightboxOpen(true);
+             }}
+           />
             ) : (
               <div style={{
                 width: '100px',
