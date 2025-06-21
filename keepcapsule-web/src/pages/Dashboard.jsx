@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Pie } from 'react-chartjs-2';
 import {
@@ -26,6 +26,7 @@ export default function Dashboard() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImage, setLightboxImage] = useState('');
   const [activeTab, setActiveTab] = useState('photos');
+  const fileInputRef = useRef();
 
   useEffect(() => {
     const user = localStorage.getItem('userEmail');
@@ -57,10 +58,12 @@ export default function Dashboard() {
 
     try {
       await uploadFileToS3(file, title, uploadType, email);
+      if (fileInputRef.current) fileInputRef.current.value = '';
       setFile(null);
       setTitle('');
       setUploadType('');
       fetchFiles(email);
+      alert('Upload successful');
     } catch (err) {
       console.error('❌ Upload failed:', err);
       alert('Upload failed.');
@@ -92,25 +95,23 @@ export default function Dashboard() {
   const renderPie = (used, total, label) => {
     const remaining = Math.max(total - used, 0);
     return (
-      <div style={{ width: '280px', margin: '1rem' }}>
-        <Pie
-          data={{
-            labels: ['Used', 'Remaining'],
-            datasets: [{
-              data: [used, remaining],
-              backgroundColor: ['#f87171', '#4ade80'],
-              borderColor: '#fff',
-              borderWidth: 1,
-            }],
-          }}
-          options={{
-            plugins: {
-              title: { display: true, text: label },
-              legend: { position: 'bottom' },
-            },
-          }}
-        />
-      </div>
+      <Pie
+        data={{
+          labels: ['Used', 'Remaining'],
+          datasets: [{
+            data: [used, remaining],
+            backgroundColor: ['#f87171', '#4ade80'],
+            borderColor: '#fff',
+            borderWidth: 1,
+          }],
+        }}
+        options={{
+          plugins: {
+            title: { display: true, text: label },
+            legend: { position: 'bottom' },
+          },
+        }}
+      />
     );
   };
 
@@ -119,56 +120,110 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="dashboard-container" style={{ padding: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Welcome, {email}</h2>
-        <button onClick={handleLogout}>Logout</button>
+    <div className="dashboard-container" style={{ padding: '2rem', maxWidth: '900px', margin: '0 auto' }}>
+      <h2 style={{ textAlign: 'center', marginBottom: '2rem' }}>Welcome, {email}</h2>
+
+      <div className="upload-box auth-box" style={{ padding: '1rem', borderRadius: '8px', boxShadow: '0 0 10px rgba(0,0,0,0.1)', maxWidth: '500px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'center' }}>
+          <div style={{ width: '100%', textAlign: 'center' }}>
+            <label
+              htmlFor="file-upload"
+              style={{
+                display: 'inline-block',
+                backgroundColor: '#3b82f6',
+                color: '#fff',
+                padding: '0.5rem 1rem',
+                borderRadius: '9999px',
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+              }}
+            >
+              Choose file
+            </label>
+            <input
+              id="file-upload"
+              type="file"
+              ref={fileInputRef}
+              onChange={e => setFile(e.target.files[0])}
+              style={{ display: 'none' }}
+            />
+            <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#555' }}>
+              {file ? file.name : 'No file chosen'}
+            </div>
+          </div>
+          <input
+            type="text"
+            placeholder="Enter title"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            className="auth-box input"
+            style={{
+              width: '100%',
+              height: '36px',
+              fontSize: '0.9rem',
+              padding: '0.4rem 0.6rem'
+            }}
+          />
+          <select
+            value={uploadType}
+            onChange={e => setUploadType(e.target.value)}
+            className="auth-box input"
+            style={{
+              width: '100%',
+              height: '36px',
+              fontSize: '0.9rem',
+              padding: '0.4rem 0.6rem'
+            }}
+          >
+            <option value="">Select type</option>
+            <option value="image">Image or Video</option>
+            <option value="document">Document</option>
+          </select>
+          <button className="btn-primary" onClick={handleUpload} style={{ width: '100px', height: '36px', fontSize: '0.9rem' }}>Upload</button>
+        </div>
       </div>
 
-      <div style={{ marginTop: '1rem' }}>
-        <input type="file" onChange={e => setFile(e.target.files[0])} />
-        <input
-          type="text"
-          placeholder="Enter title"
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-        />
-        <select value={uploadType} onChange={e => setUploadType(e.target.value)}>
-          <option value="">Select type</option>
-          <option value="image">Image or Video</option>
-          <option value="document">Document</option>
-        </select>
-        <button onClick={handleUpload}>Upload</button>
-      </div>
-
-      {/* Tab buttons */}
-      <div style={{ marginTop: '2rem' }}>
-        <button
-          onClick={() => setActiveTab('photos')}
-          style={{
-            marginRight: '1rem',
-            fontWeight: activeTab === 'photos' ? 'bold' : 'normal'
-          }}
-        >
-          Photos
-        </button>
-        <button
-          onClick={() => setActiveTab('documents')}
-          style={{ fontWeight: activeTab === 'documents' ? 'bold' : 'normal' }}
-        >
-          Documents
-        </button>
+      {/* Tab buttons group */}
+      <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+        <div style={{ display: 'inline-flex', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 5px rgba(0,0,0,0.1)' }}>
+          <button
+            onClick={() => setActiveTab('photos')}
+            style={{
+              padding: '0.5rem 1.2rem',
+              border: 'none',
+              backgroundColor: activeTab === 'photos' ? '#3b82f6' : '#e0e7ff',
+              color: activeTab === 'photos' ? '#fff' : '#1e293b',
+              cursor: 'pointer',
+              fontWeight: '500',
+            }}
+          >
+            Photos
+          </button>
+          <button
+            onClick={() => setActiveTab('documents')}
+            style={{
+              padding: '0.5rem 1.2rem',
+              border: 'none',
+              backgroundColor: activeTab === 'documents' ? '#3b82f6' : '#e0e7ff',
+              color: activeTab === 'documents' ? '#fff' : '#1e293b',
+              cursor: 'pointer',
+              fontWeight: '500',
+            }}
+          >
+            Documents
+          </button>
+        </div>
       </div>
 
       {/* File Grid */}
-      <div className="file-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '2rem' }}>
+      <div className="file-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '2rem', justifyContent: 'center' }}>
         {filteredFiles.map(file => (
-          <div key={file.key} className="file-card" style={{ border: '1px solid #ccc', padding: '10px', width: '120px' }}>
+          <div key={file.key} className="file-card" style={{ border: '1px solid #ccc', padding: '10px', width: '120px', borderRadius: '6px', textAlign: 'center' }}>
             {isImage(file) ? (
               <img
                 src={file.url}
                 alt={file.title}
-                style={{ width: '100px', height: '100px', objectFit: 'cover', cursor: 'pointer' }}
+                style={{ width: '100px', height: '100px', objectFit: 'cover', cursor: 'pointer', borderRadius: '4px' }}
                 onClick={() => {
                   setLightboxImage(file.url);
                   setLightboxOpen(true);
@@ -182,13 +237,14 @@ export default function Dashboard() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '2rem'
+                fontSize: '2rem',
+                borderRadius: '4px'
               }}>
                 📄
               </div>
             )}
-            <p style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>{file.title || 'Untitled'}</p>
-            <button style={{ marginTop: '0.5rem' }} onClick={() => handleDelete(file.key)}>Delete</button>
+            <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', wordBreak: 'break-word' }}>{file.title || 'Untitled'}</p>
+            <button className="btn-primary" style={{ marginTop: '0.5rem', padding: '0.3rem 0.6rem', fontSize: '0.8rem' }} onClick={() => handleDelete(file.key)}>Delete</button>
           </div>
         ))}
       </div>
@@ -203,9 +259,15 @@ export default function Dashboard() {
 
       {/* Pie Charts */}
       {userMeta && (
-        <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', marginTop: '3rem' }}>
-          {renderPie(userMeta.storageUsedMB || 0, userMeta.storageLimitMB || 1, 'Storage Usage')}
-          {renderPie(userMeta.retrievalsUsedMB || 0, userMeta.retrievalLimitMB || 1, 'Retrieval Usage')}
+        <div style={{ marginTop: '3rem', textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '50px' }}>
+          <div style={{ width: '250px' }}>
+            <h3 style={{ textAlign: 'center' }}>Storage Usage</h3>
+            {renderPie(userMeta.storageUsedMB || 0, userMeta.storageLimitMB || 1, 'Storage')}
+          </div>
+          <div style={{ width: '250px' }}>
+            <h3 style={{ textAlign: 'center' }}>Retrieval Usage</h3>
+            {renderPie(userMeta.retrievalsUsedMB || 0, userMeta.retrievalLimitMB || 1, 'Retrievals')}
+          </div>
         </div>
       )}
     </div>
