@@ -1,0 +1,18 @@
+# dependencies
+node_modules/
+cdk.out/
+.env
+
+# production
+dist/
+build/
+
+# system
+.DS_Store
+*.log
+
+# TypeScript
+*.tsbuildinfo
+
+# VSCode
+.vscode/
