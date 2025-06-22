@@ -5,7 +5,6 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
-import * as ssm from 'aws-cdk-lib/aws-ssm';
 
 // temp change to trigger Git
 
@@ -13,9 +12,6 @@ export class CheckoutApiStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
     
-    const stripeSecretParam = ssm.StringParameter.fromSecureStringParameterAttributes(this, 'StripeSecretParam', {
-      parameterName: '/keepcapsule/stripe/secret',
-    });
 
     // ✅ S3 bucket
     const fileBucket = new s3.Bucket(this, 'KeepCapsuleFileBucket', {
@@ -44,11 +40,14 @@ export class CheckoutApiStack extends cdk.Stack {
       handler: 'index.handler',
       code: lambda.Code.fromAsset('src/lambdas/createCheckoutSession'),
       environment: {
-        STRIPE_SECRET_KEY: stripeSecretParam.stringValue,
+        STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY!,
         USERS_TABLE_NAME: usersTable.tableName,
       },
     });
-    stripeSecretParam.grantRead(checkoutFunction);
+    // console.log('✅ CheckoutFunction ENV:', {
+    //   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    //   USERS_TABLE_NAME: usersTable.tableName,
+    // });
 
     const uploadFunction = new lambda.Function(this, 'UploadFileFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
@@ -59,6 +58,10 @@ export class CheckoutApiStack extends cdk.Stack {
         FILE_TABLE_NAME: filesTable.tableName,
       },
     });
+    console.log('✅ UploadFunction ENV:', {
+      FILE_BUCKET_NAME: fileBucket.bucketName,
+      FILE_TABLE_NAME: filesTable.tableName,
+    });
 
     const getFilesFunction = new lambda.Function(this, 'GetFilesFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
@@ -68,6 +71,10 @@ export class CheckoutApiStack extends cdk.Stack {
         FILE_TABLE_NAME: filesTable.tableName,
         UPLOAD_BUCKET: fileBucket.bucketName,
       },
+    });
+    console.log('✅ GetFilesFunction ENV:', {
+      FILE_TABLE_NAME: filesTable.tableName,
+      UPLOAD_BUCKET: fileBucket.bucketName,
     });
     filesTable.grantReadData(getFilesFunction);
 
@@ -80,6 +87,10 @@ export class CheckoutApiStack extends cdk.Stack {
         FILE_TABLE_NAME: filesTable.tableName,
       },
     });
+    console.log('✅ DeleteFileFunction ENV:', {
+      FILE_BUCKET_NAME: fileBucket.bucketName,
+      FILE_TABLE_NAME: filesTable.tableName,
+    });
 
     const setPasswordFunction = new lambda.Function(this, 'SetPasswordFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
@@ -89,6 +100,9 @@ export class CheckoutApiStack extends cdk.Stack {
         USERS_TABLE_NAME: usersTable.tableName,
       },
     });
+    console.log('✅ SetPasswordFunction ENV:', {
+      USERS_TABLE_NAME: usersTable.tableName,
+    });
 
     const loginFunction = new lambda.Function(this, 'LoginFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
@@ -97,6 +111,9 @@ export class CheckoutApiStack extends cdk.Stack {
       environment: {
         USERS_TABLE_NAME: usersTable.tableName,
       },
+    });
+    console.log('✅ LoginFunction ENV:', {
+      USERS_TABLE_NAME: usersTable.tableName,
     });
 
     // ✅ Grant permissions

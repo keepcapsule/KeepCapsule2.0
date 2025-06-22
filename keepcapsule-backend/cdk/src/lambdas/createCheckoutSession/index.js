@@ -1,37 +1,74 @@
-const AWS = require('aws-sdk');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const AWS = require("aws-sdk");
+const stripeLib = require("stripe");
+
 const dynamo = new AWS.DynamoDB.DocumentClient();
+let stripe; // Cache the Stripe instance
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'OPTIONS,POST',
+};
 
 exports.handler = async (event) => {
-  console.log('📩 Incoming event:', JSON.stringify(event, null, 2));
+  console.log("📣 Lambda started up");
+  console.log("📩 Incoming event:", event);
+  console.log("this lambda is working");
 
-  const { email, priceId } = JSON.parse(event.body || '{}');
-
-  if (!email || !priceId) {
+  if (event.httpMethod === 'OPTIONS') {
     return {
-      statusCode: 400,
-      headers: { 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify({ error: 'Missing email or priceId' }),
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify({ message: 'CORS preflight success' }),
     };
   }
 
   try {
-    const customer = await stripe.customers.create({ email });
+    const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
+    console.log("🧪 Parsed body:", body);
+    const { email, priceId } = body || {};
+    console.log("📧 Email:", email);
+    console.log("💰 Price ID:", priceId);
 
-    // ⛔ Detect based on priceId pattern (one-time payments usually have 'one_time' price type)
+    if (!email || !priceId) {
+      console.error("Missing required fields", { email, priceId });
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ message: "Missing email or priceId" }),
+      };
+    }
+
+    // Initialize Stripe with environment variable if not already cached
+    if (!stripe) {
+      if (!process.env.STRIPE_SECRET_KEY) {
+        console.error("❌ Missing STRIPE_SECRET_KEY in environment variables");
+        throw new Error("Stripe secret key not found in env vars");
+      }
+      console.log("🔐 Initializing Stripe with environment variable");
+      stripe = stripeLib(process.env.STRIPE_SECRET_KEY);
+    }
+
+    console.log("👤 Creating Stripe customer for:", email);
+    const customer = await stripe.customers.create({ email });
+    console.log("✅ Customer created:", customer);
+
+    console.log("🔍 Retrieving price for:", priceId);
     const priceDetails = await stripe.prices.retrieve(priceId);
+    console.log("📄 Price details:", priceDetails);
     const mode = priceDetails.recurring ? 'subscription' : 'payment';
 
+    console.log("🧾 Creating checkout session...");
     const session = await stripe.checkout.sessions.create({
       mode,
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       customer: customer.id,
-      success_url: `http://localhost:5173/set-password?email=${encodeURIComponent(email)}&customerId=${customer.id}&sessionId={CHECKOUT_SESSION_ID}`,
-      cancel_url: `http://localhost:5173`,
+      success_url: `https://keepcapsule.com/set-password?email=${encodeURIComponent(email)}&customerId=${customer.id}&sessionId={CHECKOUT_SESSION_ID}`,
+      cancel_url: `https://keepcapsule.com`,
     });
+    console.log("✅ Checkout session created:", session);
 
-    // Store basic info regardless of plan
     const item = {
       email,
       customerId: customer.id,
@@ -39,6 +76,7 @@ exports.handler = async (event) => {
       createdAt: new Date().toISOString(),
     };
 
+    console.log("💾 Saving to DynamoDB:", item);
     await dynamo.put({
       TableName: process.env.USERS_TABLE_NAME,
       Item: item,
@@ -48,15 +86,21 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { 'Access-Control-Allow-Origin': '*' },
+      headers: {
+        ...corsHeaders,
+        'Access-Control-Allow-Credentials': true,
+      },
       body: JSON.stringify({ url: session.url }),
     };
-  } catch (err) {
-    console.error('🔥 Checkout error:', err);
+  } catch (error) {
+    console.error("🔥 Lambda error:", error);
     return {
       statusCode: 500,
-      headers: { 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify({ error: 'Internal error' }),
+      headers: {
+        ...corsHeaders,
+        'Access-Control-Allow-Credentials': true,
+      },
+      body: JSON.stringify({ message: "Internal server error", error: error.message }),
     };
   }
 };
