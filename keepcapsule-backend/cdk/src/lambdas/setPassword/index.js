@@ -31,6 +31,22 @@ exports.handler = async (event) => {
   }
 
   try {
+    // 🔐 Fetch user to check if they are paid
+    const user = await dynamo.get({
+      TableName: process.env.USERS_TABLE_NAME,
+      Key: { email },
+    }).promise();
+
+    if (!user.Item || user.Item.isPaid !== true) {
+      console.warn('🚫 Attempt to set password without payment:', email);
+      return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({ error: 'You must complete payment before setting a password.' }),
+      };
+    }
+
+    // ✅ Hash password and save
     const hashedPassword = await bcrypt.hash(password, 10);
 
     await dynamo.update({

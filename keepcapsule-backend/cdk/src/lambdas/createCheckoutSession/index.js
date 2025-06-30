@@ -2,7 +2,7 @@ const AWS = require("aws-sdk");
 const stripeLib = require("stripe");
 
 const dynamo = new AWS.DynamoDB.DocumentClient();
-let stripe; // Cache the Stripe instance
+let stripe;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,27 +11,23 @@ const corsHeaders = {
 };
 
 exports.handler = async (event) => {
-  console.log("📣 Lambda started up");
-  console.log("📩 Incoming event:", event);
-  console.log("this lambda is working");
+  console.log("📣 Lambda started");
+  console.log("📩 Event:", JSON.stringify(event));
 
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
       headers: corsHeaders,
-      body: JSON.stringify({ message: 'CORS preflight success' }),
+      body: 'OK',
     };
   }
 
   try {
     const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
-    console.log("🧪 Parsed body:", body);
     const { email, priceId } = body || {};
-    console.log("📧 Email:", email);
-    console.log("💰 Price ID:", priceId);
 
     if (!email || !priceId) {
-      console.error("Missing required fields", { email, priceId });
+      console.error("❌ Missing email or priceId", { email, priceId });
       return {
         statusCode: 400,
         headers: corsHeaders,
@@ -39,50 +35,35 @@ exports.handler = async (event) => {
       };
     }
 
-    // Initialize Stripe with environment variable if not already cached
     if (!stripe) {
-      if (!process.env.STRIPE_SECRET_KEY) {
-        console.error("❌ Missing STRIPE_SECRET_KEY in environment variables");
-        throw new Error("Stripe secret key not found in env vars");
-      }
-      console.log("🔐 Initializing Stripe with environment variable");
-      stripe = stripeLib(process.env.STRIPE_SECRET_KEY);
+      const secretKey = process.env.STRIPE_SECRET_KEY;
+      if (!secretKey) throw new Error("STRIPE_SECRET_KEY is undefined");
+      stripe = stripeLib(secretKey);
     }
 
-    console.log("👤 Creating Stripe customer for:", email);
-    const customer = await stripe.customers.create({ email });
-    console.log("✅ Customer created:", customer);
-
-    console.log("🔍 Retrieving price for:", priceId);
-    const priceDetails = await stripe.prices.retrieve(priceId);
-    console.log("📄 Price details:", priceDetails);
-    const mode = priceDetails.recurring ? 'subscription' : 'payment';
-
-    console.log("🧾 Creating checkout session...");
+    // ✅ Create session using customer_email directly (no need to pre-create a customer here)
     const session = await stripe.checkout.sessions.create({
-      mode,
+      mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
-      customer: customer.id,
-      success_url: `https://keepcapsule.com/set-password?email=${encodeURIComponent(email)}&customerId=${customer.id}&sessionId={CHECKOUT_SESSION_ID}`,
-      cancel_url: `https://keepcapsule.com`,
+      customer_email: email,
+      metadata: {
+        email,
+      },
+      success_url: `http://localhost:5173/set-password?sessionId={CHECKOUT_SESSION_ID}`,
+      cancel_url: `http://localhost:5173/`,
     });
-    console.log("✅ Checkout session created:", session);
 
-    const item = {
-      email,
-      customerId: customer.id,
-      subscriptionId: 'pending',
-      createdAt: new Date().toISOString(),
-    };
-
-    console.log("💾 Saving to DynamoDB:", item);
+    // Store the user with a placeholder customer ID (will be filled after webhook)
     await dynamo.put({
       TableName: process.env.USERS_TABLE_NAME,
-      Item: item,
+      Item: {
+        email,
+        customerId: 'pending',
+        subscriptionId: 'pending',
+        createdAt: new Date().toISOString(),
+      },
     }).promise();
-
-    console.log('✅ Saved to DynamoDB:', item);
 
     return {
       statusCode: 200,
@@ -92,15 +73,12 @@ exports.handler = async (event) => {
       },
       body: JSON.stringify({ url: session.url }),
     };
-  } catch (error) {
-    console.error("🔥 Lambda error:", error);
+  } catch (err) {
+    console.error("🔥 Checkout Lambda Error:", err);
     return {
       statusCode: 500,
-      headers: {
-        ...corsHeaders,
-        'Access-Control-Allow-Credentials': true,
-      },
-      body: JSON.stringify({ message: "Internal server error", error: error.message }),
+      headers: corsHeaders,
+      body: JSON.stringify({ message: "Internal error", error: err.message }),
     };
   }
 };

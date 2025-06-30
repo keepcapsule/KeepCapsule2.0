@@ -10,13 +10,29 @@ export default function SetPassword() {
   const [params] = useSearchParams();
 
   useEffect(() => {
-    const emailParam = params.get('email');
-    const customerIdParam = params.get('customerId') || params.get('session_id');
-    if (emailParam && customerIdParam) {
-      setEmail(emailParam);
-      setCustomerId(customerIdParam);
-    }
+    const sessionId = params.get('sessionId');
+  
+    if (!sessionId) return;
+  
+    const fetchSessionDetails = async () => {
+      try {
+        const res = await fetch(`https://xkl1o711jk.execute-api.eu-west-1.amazonaws.com/prod/get-stripe-session?sessionId=${sessionId}`);
+        const data = await res.json();
+  
+        if (res.ok) {
+          setEmail(data.email);
+          setCustomerId(data.customerId);
+        } else {
+          console.error("Failed to fetch session:", data.message);
+        }
+      } catch (err) {
+        console.error("Error fetching session:", err);
+      }
+    };
+  
+    fetchSessionDetails();
   }, [params]);
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
