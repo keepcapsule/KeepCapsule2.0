@@ -1,5 +1,4 @@
 const AWS = require('aws-sdk');
-const { lookup } = require('mime-types');
 const { getUserFromEvent } = require('./authUtils.js');
 
 const s3 = new AWS.S3();
@@ -66,7 +65,7 @@ exports.handler = async (event) => {
   } catch (err) {
     console.error('❌ Upload error:', err.message);
     return {
-      statusCode: 403,
+      statusCode: 500,
       headers,
       body: JSON.stringify({ message: 'Unauthorized or upload failed' }),
     };

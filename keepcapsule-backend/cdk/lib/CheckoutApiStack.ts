@@ -12,7 +12,7 @@ export class CheckoutApiStack extends cdk.Stack {
 
     const sharedEnv = {
       JWT_SECRET: process.env.JWT_SECRET!,
-    };    
+    };
 
     const fileBucket = new s3.Bucket(this, 'KeepCapsuleFileBucket', {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -28,6 +28,12 @@ export class CheckoutApiStack extends cdk.Stack {
     const filesTable = new dynamodb.Table(this, 'FilesTable', {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    const metaTable = new dynamodb.Table(this, 'UserMetaTable', {
+      partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
@@ -63,7 +69,6 @@ export class CheckoutApiStack extends cdk.Stack {
         UPLOAD_BUCKET: fileBucket.bucketName,
       },
     });
-    filesTable.grantReadData(getFilesFunction);
 
     const deleteFileFunction = new lambda.Function(this, 'DeleteFileFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
@@ -73,6 +78,18 @@ export class CheckoutApiStack extends cdk.Stack {
         ...sharedEnv,
         FILE_BUCKET_NAME: fileBucket.bucketName,
         FILE_TABLE_NAME: filesTable.tableName,
+      },
+    });
+
+    const downloadFileFunction = new lambda.Function(this, 'DownloadFileFunction', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('src/lambdas/downloadFile'),
+      environment: {
+        ...sharedEnv,
+        FILE_BUCKET_NAME: fileBucket.bucketName,
+        FILE_TABLE_NAME: filesTable.tableName,
+        META_TABLE_NAME: metaTable.tableName,
       },
     });
 
@@ -115,6 +132,16 @@ export class CheckoutApiStack extends cdk.Stack {
       },
     });
 
+    const getUserUsageFunction = new lambda.Function(this, 'GetUserUsageFunction', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('src/lambdas/getUserUsage'),
+      environment: {
+        ...sharedEnv,
+        FILE_TABLE_NAME: filesTable.tableName,
+      },
+    });
+
     // ✅ Permissions
     usersTable.grantReadWriteData(checkoutFunction);
     usersTable.grantReadWriteData(setPasswordFunction);
@@ -124,9 +151,17 @@ export class CheckoutApiStack extends cdk.Stack {
     filesTable.grantReadWriteData(uploadFunction);
     fileBucket.grantReadWrite(uploadFunction);
 
+    filesTable.grantReadData(getFilesFunction);
     fileBucket.grantRead(getFilesFunction);
-    fileBucket.grantDelete(deleteFileFunction);
+
     filesTable.grantWriteData(deleteFileFunction);
+    fileBucket.grantDelete(deleteFileFunction);
+
+    filesTable.grant(getUserUsageFunction, 'dynamodb:Query');
+
+    filesTable.grantReadData(downloadFileFunction);
+    metaTable.grantReadWriteData(downloadFileFunction);
+    fileBucket.grantRead(downloadFileFunction);
 
     // ✅ API Gateway
     const api = new apigateway.RestApi(this, 'KeepCapsuleApi', {
@@ -147,8 +182,8 @@ export class CheckoutApiStack extends cdk.Stack {
     api.root.addResource('set-password').addMethod('POST', new apigateway.LambdaIntegration(setPasswordFunction));
     api.root.addResource('webhook').addMethod('POST', new apigateway.LambdaIntegration(handleStripeWebhookFunction));
     api.root.addResource('get-stripe-session').addMethod('GET', new apigateway.LambdaIntegration(getStripeSessionFunction));
-
-
+    api.root.addResource('get-usage').addMethod('GET', new apigateway.LambdaIntegration(getUserUsageFunction));
+    api.root.addResource('download-file').addMethod('POST', new apigateway.LambdaIntegration(downloadFileFunction));
 
     // ✅ Lambda URL for webhook
     const webhookFunctionUrl = handleStripeWebhookFunction.addFunctionUrl({

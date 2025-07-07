@@ -1,5 +1,5 @@
 {
-  "name": "getuserusage",
+  "name": "downloadfile",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -10,9 +10,6 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "aws": "^0.0.3-2",
-    "aws-sdk": "^2.1692.0",
-    "jsonwebtoken": "^9.0.2",
-    "sdk": "^0.5.0"
+    "aws-sdk": "^2.1692.0"
   }
 }
