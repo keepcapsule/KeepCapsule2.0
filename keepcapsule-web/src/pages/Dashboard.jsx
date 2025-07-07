@@ -35,13 +35,21 @@ export default function Dashboard() {
       navigate('/');
     } else {
       setEmail(user);
-      fetchFiles(user);
+      fetchFiles();
     }
   }, [navigate]);
 
-  const fetchFiles = async (userEmail) => {
+  const fetchFiles = async () => {
     try {
-      const res = await fetch(`${API_BASE}/get-files?email=${encodeURIComponent(userEmail)}`);
+      const token = localStorage.getItem('authToken');
+  
+      const res = await fetch(`${API_BASE}/get-files`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+  
       console.log('✅ GET FILES STATUS:', res.status);
   
       if (!res.ok) throw new Error('Bad response from get-files');
@@ -49,11 +57,9 @@ export default function Dashboard() {
       const data = await res.json();
       console.log('📦 Fetched files:', data);
   
-      const bucketName = `keepcapsulefilebucketd4376c59-troas1azkumx-${userEmail}`;
-  
       const filesWithUrls = (data.files || []).map(file => ({
         ...file,
-        url: `https://checkoutapistack-keepcapsulefilebucketd4376c59-troas1azkumx.s3.amazonaws.com/${file.key}`
+        url: `${s3BaseUrl}/${file.key}`
       }));
   
       setFiles(filesWithUrls);
@@ -70,12 +76,12 @@ export default function Dashboard() {
     }
 
     try {
-      await uploadFileToS3(file, title, uploadType, email);
+      await uploadFileToS3(file, title, uploadType);
       if (fileInputRef.current) fileInputRef.current.value = '';
       setFile(null);
       setTitle('');
       setUploadType('');
-      fetchFiles(email);
+      fetchFiles();
       alert('Upload successful');
     } catch (err) {
       console.error('❌ Upload failed:', err);
@@ -85,13 +91,19 @@ export default function Dashboard() {
 
   const handleDelete = async (key) => {
     try {
+      const token = localStorage.getItem('authToken');
+  
       const res = await fetch(`${API_BASE}/delete-file`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, key }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ key }),
       });
+  
       if (!res.ok) throw new Error('Delete failed');
-      fetchFiles(email);
+      fetchFiles(); // updated to not pass email
     } catch (err) {
       console.error('❌ Delete failed:', err);
       alert('Delete failed.');

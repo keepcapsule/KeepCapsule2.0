@@ -10,6 +10,10 @@ export class CheckoutApiStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    const sharedEnv = {
+      JWT_SECRET: process.env.JWT_SECRET!,
+    };    
+
     const fileBucket = new s3.Bucket(this, 'KeepCapsuleFileBucket', {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
@@ -43,6 +47,7 @@ export class CheckoutApiStack extends cdk.Stack {
       handler: 'index.handler',
       code: lambda.Code.fromAsset('src/lambdas/uploadFile'),
       environment: {
+        ...sharedEnv,
         FILE_BUCKET_NAME: fileBucket.bucketName,
         FILE_TABLE_NAME: filesTable.tableName,
       },
@@ -53,6 +58,7 @@ export class CheckoutApiStack extends cdk.Stack {
       handler: 'index.handler',
       code: lambda.Code.fromAsset('src/lambdas/getFiles'),
       environment: {
+        ...sharedEnv,
         FILE_TABLE_NAME: filesTable.tableName,
         UPLOAD_BUCKET: fileBucket.bucketName,
       },
@@ -64,6 +70,7 @@ export class CheckoutApiStack extends cdk.Stack {
       handler: 'index.handler',
       code: lambda.Code.fromAsset('src/lambdas/deleteFile'),
       environment: {
+        ...sharedEnv,
         FILE_BUCKET_NAME: fileBucket.bucketName,
         FILE_TABLE_NAME: filesTable.tableName,
       },
@@ -84,6 +91,7 @@ export class CheckoutApiStack extends cdk.Stack {
       code: lambda.Code.fromAsset('src/lambdas/login'),
       environment: {
         USERS_TABLE_NAME: usersTable.tableName,
+        JWT_SECRET: process.env.JWT_SECRET!,
       },
     });
 
@@ -127,7 +135,7 @@ export class CheckoutApiStack extends cdk.Stack {
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
-        allowHeaders: ['Content-Type'],
+        allowHeaders: ['Content-Type', 'Authorization'],
       },
     });
 

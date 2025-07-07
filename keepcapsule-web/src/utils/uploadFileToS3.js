@@ -1,17 +1,20 @@
-export async function uploadFileToS3(file, title, type, email) {
+export async function uploadFileToS3(file, title, type) {
   try {
+    const token = localStorage.getItem('authToken');
     const base64Data = await fileToBase64(file);
 
     const response = await fetch(
       'https://xkl1o711jk.execute-api.eu-west-1.amazonaws.com/prod/upload-file',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({
           base64Data: base64Data.split(',')[1],
           title,
           type,
-          email,
           filename: file.name,
           mimeType: file.type,
         }),

@@ -1,6 +1,7 @@
 const AWS = require('aws-sdk');
 const s3 = new AWS.S3();
 const dynamo = new AWS.DynamoDB.DocumentClient();
+const { getUserFromEvent } = require('./authUtils.js');
 
 const BUCKET = process.env.FILE_BUCKET_NAME;
 const TABLE = process.env.FILE_TABLE_NAME;
@@ -8,7 +9,7 @@ const TABLE = process.env.FILE_TABLE_NAME;
 exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
 
@@ -17,23 +18,20 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { email, key } = JSON.parse(event.body || '{}');
+    const user = getUserFromEvent(event);
+    const email = user.email;
+    const { key } = JSON.parse(event.body || '{}');
 
-    if (!email || !key) {
+    if (!key) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'Missing email or file key' }),
+        body: JSON.stringify({ error: 'Missing file key' }),
       };
     }
 
-    // Delete from S3
-    await s3.deleteObject({
-      Bucket: BUCKET,
-      Key: key,
-    }).promise();
+    await s3.deleteObject({ Bucket: BUCKET, Key: key }).promise();
 
-    // Delete from DynamoDB
     await dynamo.delete({
       TableName: TABLE,
       Key: {
@@ -48,11 +46,11 @@ exports.handler = async (event) => {
       body: JSON.stringify({ message: 'File deleted successfully' }),
     };
   } catch (error) {
-    console.error('❌ Delete failed:', error);
+    console.error('❌ Delete error:', error.message);
     return {
-      statusCode: 500,
+      statusCode: 403,
       headers,
-      body: JSON.stringify({ error: 'Error deleting file', details: error.message }),
+      body: JSON.stringify({ error: 'Unauthorized or delete failed' }),
     };
   }
 };

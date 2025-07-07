@@ -1,5 +1,6 @@
 const AWS = require('aws-sdk');
 const { lookup } = require('mime-types');
+const { getUserFromEvent } = require('./authUtils.js');
 
 const s3 = new AWS.S3();
 const dynamo = new AWS.DynamoDB.DocumentClient();
@@ -14,9 +15,12 @@ exports.handler = async (event) => {
   };
 
   try {
-    const { base64Data, title, type, email, filename, mimeType } = JSON.parse(event.body || '{}');
+    const user = getUserFromEvent(event);
+    const email = user.email;
 
-    if (!email || !title || !type || !base64Data || !filename || !mimeType) {
+    const { base64Data, title, type, filename, mimeType } = JSON.parse(event.body || '{}');
+
+    if (!title || !type || !base64Data || !filename || !mimeType) {
       return {
         statusCode: 400,
         headers,
@@ -60,11 +64,11 @@ exports.handler = async (event) => {
       }),
     };
   } catch (err) {
-    console.error('❌ Upload error:', err);
+    console.error('❌ Upload error:', err.message);
     return {
-      statusCode: 500,
+      statusCode: 403,
       headers,
-      body: JSON.stringify({ message: 'Internal server error', error: err.message }),
+      body: JSON.stringify({ message: 'Unauthorized or upload failed' }),
     };
   }
 };

@@ -1,6 +1,7 @@
 const AWS = require('aws-sdk');
-const dynamo = new AWS.DynamoDB.DocumentClient();
+const { getUserFromEvent } = require('./authUtils.js');
 
+const dynamo = new AWS.DynamoDB.DocumentClient();
 const TABLE = process.env.FILE_TABLE_NAME;
 const S3_BUCKET = process.env.UPLOAD_BUCKET;
 
@@ -11,16 +12,10 @@ exports.handler = async (event) => {
     'Access-Control-Allow-Methods': '*',
   };
 
-  const email = event.queryStringParameters?.email;
-  if (!email) {
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: 'Missing email query parameter' }),
-    };
-  }
-
   try {
+    const user = getUserFromEvent(event);
+    const email = user.email;
+
     const result = await dynamo.query({
       TableName: TABLE,
       KeyConditionExpression: 'pk = :email',
@@ -53,11 +48,11 @@ exports.handler = async (event) => {
       body: JSON.stringify({ files, meta }),
     };
   } catch (err) {
-    console.error('❌ Error retrieving files from DynamoDB:', err);
+    console.error('❌ GetFiles error:', err.message);
     return {
-      statusCode: 500,
+      statusCode: 403,
       headers,
-      body: JSON.stringify({ error: 'Failed to retrieve files', details: err.message }),
+      body: JSON.stringify({ error: 'Unauthorized or failed to retrieve files' }),
     };
   }
 };

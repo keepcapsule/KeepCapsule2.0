@@ -27,8 +27,11 @@ export default function Login() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Login failed');
-
-      localStorage.setItem('userEmail', email);
+      
+      // ✅ Store the token securely for future API calls
+      localStorage.setItem('authToken', data.token);
+      localStorage.setItem('userEmail', data.email); // use data.email, not just `email` from input
+      
       navigate('/dashboard');
     } catch (err) {
       setError(err.message);
