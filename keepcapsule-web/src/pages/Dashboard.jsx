@@ -238,8 +238,11 @@ export default function Dashboard() {
               <div style={{ width: '100px', height: '100px', background: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', borderRadius: '4px' }}>📄</div>
             )}
             <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', wordBreak: 'break-word' }}>{file.title || 'Untitled'}</p>
-            <button className="btn-primary" style={{ marginTop: '0.5rem', padding: '0.3rem 0.6rem', fontSize: '0.8rem' }} onClick={() => handleDownload(file.key)}>Download</button>
-            <button className="btn-danger" style={{ marginTop: '0.4rem', padding: '0.3rem 0.6rem', fontSize: '0.8rem' }} onClick={() => handleDelete(file.key)}>Delete</button>
+            <button className="btn-primary" style={{ backgroundColor: '#3b82f6', color: '#fff', marginTop: '0.5rem', padding: '0.3rem 0.6rem', fontSize: '0.8rem' }} onClick={() => handleDownload(file.key)}>
+              Download
+            </button>
+            <button className="btn-danger" style={{ marginTop: '0.4rem', padding: '0.3rem 0.6rem', fontSize: '0.8rem' }} onClick={() => handleDelete(file.key)}>
+              Delete</button>
           </div>
         ))}
       </div>
