@@ -2,11 +2,11 @@
   "name": "keepcapsule-web",
   "version": "1.0.0",
   "main": "index.js",
-  "scripts": {
+ "scripts": {
   "start": "vite",
-  "build": "vite build",
-  "dev": "vite"
-  },
+  "dev": "vite",
+  "build": "vite build"
+},
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
