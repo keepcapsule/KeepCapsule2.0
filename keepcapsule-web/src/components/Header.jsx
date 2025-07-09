@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import keepcapsuleLogo from '../assets/keepcapsulelogo.png';
+
 
 export default function Header() {
   const [userEmail, setUserEmail] = useState('');
@@ -24,7 +26,9 @@ export default function Header() {
 
   return (
     <header className="header">
-      <Link to="/" className="logo">KeepCapsule</Link>
+      {/* <Link to="/" className="logo">KeepCapsule</Link> */}
+      <img src={keepcapsuleLogo} alt="KeepCapsule Logo" style={{ height: '100px' }} />
+
 
       <div className="hamburger" onClick={toggleMenu}>☰</div>
 
