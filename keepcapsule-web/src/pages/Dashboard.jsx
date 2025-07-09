@@ -233,7 +233,23 @@ export default function Dashboard() {
         {filteredFiles.map(file => (
           <div key={file.key} className="file-card" style={{ border: '1px solid #ccc', padding: '10px', width: '120px', borderRadius: '6px', textAlign: 'center' }}>
             {isImage(file) ? (
-              <img src={file.url} alt={file.title} crossOrigin="anonymous" style={{ width: '100px', height: '100px', objectFit: 'cover', cursor: 'pointer', borderRadius: '4px' }} onClick={() => { setLightboxImage(file.url); setLightboxOpen(true); }} />
+            <img
+            src={file.url}
+            alt={file.title}
+            crossOrigin="anonymous"
+            style={{
+              width: '100px',
+              height: '100px',
+              objectFit: 'cover',
+              cursor: 'pointer',
+              borderRadius: '4px',
+              pointerEvents: 'auto',
+              userSelect: 'none'
+            }}
+            onContextMenu={(e) => e.preventDefault()}
+            draggable={false}
+            onClick={() => { setLightboxImage(file.url); setLightboxOpen(true); }}
+          />
             ) : (
               <div style={{ width: '100px', height: '100px', background: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', borderRadius: '4px' }}>📄</div>
             )}

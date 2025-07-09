@@ -20,14 +20,9 @@ exports.handler = async (event) => {
 
     const { key } = JSON.parse(event.body || '{}');
     if (!key) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ message: 'Missing key' }),
-      };
+      return { statusCode: 400, headers, body: JSON.stringify({ message: 'Missing key' }) };
     }
 
-    // 1. Check object storage class
     const head = await s3.headObject({ Bucket: BUCKET_NAME, Key: key }).promise();
     const storageClass = head.StorageClass || 'STANDARD';
     const isGlacier = ['GLACIER', 'DEEP_ARCHIVE', 'GLACIER_IR'].includes(storageClass);
@@ -63,14 +58,12 @@ exports.handler = async (event) => {
       }
     }
 
-    // 2. Generate signed URL
     const signedUrl = s3.getSignedUrl('getObject', {
       Bucket: BUCKET_NAME,
       Key: key,
       Expires: 60 * 5,
     });
 
-    // 3. Get file size
     const { Item } = await dynamo.get({
       TableName: TABLE,
       Key: { pk: email, sk: key },
@@ -80,21 +73,16 @@ exports.handler = async (event) => {
       return {
         statusCode: 404,
         headers,
-        body: JSON.stringify({ message: 'File metadata not found in database' }),
+        body: JSON.stringify({ message: 'File metadata not found' }),
       };
     }
 
-    const sizeBytes = Item.size || 0;
-    const sizeMB = Math.max(1, Math.round(sizeBytes / 1024 / 1024));
-
-    // 4. Track retrieval usage
+    const sizeMB = Math.max(1, Math.round((Item.size || 0) / 1024 / 1024));
     await dynamo.update({
       TableName: META_TABLE,
       Key: { pk: email },
       UpdateExpression: 'ADD retrievalsUsedMB :s',
-      ExpressionAttributeValues: {
-        ':s': sizeMB,
-      },
+      ExpressionAttributeValues: { ':s': sizeMB },
     }).promise();
 
     return {
