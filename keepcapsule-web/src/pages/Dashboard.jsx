@@ -233,35 +233,53 @@ export default function Dashboard() {
         {filteredFiles.map(file => (
           <div key={file.key} className="file-card" style={{ border: '1px solid #ccc', padding: '10px', width: '120px', borderRadius: '6px', textAlign: 'center' }}>
             {isImage(file) ? (
-            <img
-            src={file.url}
-            alt={file.title}
-            crossOrigin="anonymous"
-            style={{
-              width: '100px',
-              height: '100px',
-              objectFit: 'cover',
-              cursor: 'pointer',
-              borderRadius: '4px',
-              pointerEvents: 'auto',
-              userSelect: 'none'
-            }}
-            onContextMenu={(e) => e.preventDefault()}
-            draggable={false}
-            onClick={() => { setLightboxImage(file.url); setLightboxOpen(true); }}
-          />
+              <img
+                src={file.url}
+                alt={file.title}
+                crossOrigin="anonymous"
+                style={{
+                  width: '100px',
+                  height: '100px',
+                  objectFit: 'cover',
+                  cursor: 'pointer',
+                  borderRadius: '4px',
+                  pointerEvents: 'auto',
+                  userSelect: 'none'
+                }}
+                onContextMenu={(e) => e.preventDefault()}
+                draggable={false}
+                onClick={() => { setLightboxImage(file.url); setLightboxOpen(true); }}
+              />
             ) : (
               <div style={{ width: '100px', height: '100px', background: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', borderRadius: '4px' }}>📄</div>
             )}
+
             <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', wordBreak: 'break-word' }}>{file.title || 'Untitled'}</p>
-            <button className="btn-primary" style={{ backgroundColor: '#3b82f6', color: '#fff', marginTop: '0.5rem', padding: '0.3rem 0.6rem', fontSize: '0.8rem' }} onClick={() => handleDownload(file.key)}>
+
+            {file.restoreStatus === 'restoring' && (
+              <p style={{ color: 'orange', fontSize: '0.8rem', marginTop: '0.3rem' }}>Restoring...</p>
+            )}
+
+            <button
+              className="btn-primary"
+              style={{ backgroundColor: '#3b82f6', color: '#fff', marginTop: '0.5rem', padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
+              onClick={() => handleDownload(file.key)}
+              disabled={file.restoreStatus === 'restoring'}
+            >
               Download
             </button>
-            <button className="btn-danger" style={{ marginTop: '0.4rem', padding: '0.3rem 0.6rem', fontSize: '0.8rem' }} onClick={() => handleDelete(file.key)}>
-              Delete</button>
+
+            <button
+              className="btn-danger"
+              style={{ marginTop: '0.4rem', padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
+              onClick={() => handleDelete(file.key)}
+            >
+              Delete
+            </button>
           </div>
         ))}
       </div>
+
 
       {lightboxOpen && (
         <Lightbox mainSrc={lightboxImage} onCloseRequest={() => setLightboxOpen(false)} />
