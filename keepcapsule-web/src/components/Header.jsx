@@ -26,8 +26,9 @@ export default function Header() {
 
   return (
     <header className="header">
-      {/* <Link to="/" className="logo">KeepCapsule</Link> */}
-      <img src={keepcapsuleLogo} alt="KeepCapsule Logo" style={{ height: '100px' }} />
+      <Link to="/">
+        <img src={keepcapsuleLogo} alt="KeepCapsule Logo" style={{ height: '100px', cursor: 'pointer' }} />
+      </Link>
 
 
       <div className="hamburger" onClick={toggleMenu}>☰</div>
