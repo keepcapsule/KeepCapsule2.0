@@ -18,13 +18,24 @@ exports.handler = async (event) => {
     const user = getUserFromEvent(event);
     const email = user.email;
 
-    const result = await dynamo.query({
+    const { lastKey } = event.queryStringParameters || {};
+    const queryInput = {
       TableName: TABLE,
       KeyConditionExpression: 'pk = :email',
       ExpressionAttributeValues: {
         ':email': email,
       },
-    }).promise();
+      Limit: 30,
+    };
+
+    if (lastKey) {
+      queryInput.ExclusiveStartKey = {
+        pk: email,
+        sk: lastKey,
+      };
+    }
+
+    const result = await dynamo.query(queryInput).promise();
 
     const files = await Promise.all((result.Items || []).map(async (item) => {
       let restoreStatus = null;
@@ -70,7 +81,11 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ files, meta }),
+      body: JSON.stringify({
+        files,
+        meta,
+        lastEvaluatedKey: result.LastEvaluatedKey ? result.LastEvaluatedKey.sk : null,
+      }),
     };
   } catch (err) {
     console.error('❌ GetFiles error:', err.message);

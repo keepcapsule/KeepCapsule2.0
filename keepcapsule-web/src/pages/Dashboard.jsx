@@ -28,6 +28,8 @@ export default function Dashboard() {
   const [lightboxImage, setLightboxImage] = useState('');
   const [activeTab, setActiveTab] = useState('photos');
   const fileInputRef = useRef();
+  const [lastKey, setLastKey] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     const user = localStorage.getItem('userEmail');
@@ -39,10 +41,12 @@ export default function Dashboard() {
     }
   }, [navigate]);
 
-  const fetchFiles = async () => {
+  const fetchFiles = async (append = false) => {
     try {
       const token = localStorage.getItem('authToken');
-      const res = await fetch(`${API_BASE}/get-files`, {
+      const url = `${API_BASE}/get-files${lastKey ? `?lastKey=${encodeURIComponent(lastKey)}` : ''}`;
+
+      const res = await fetch(url, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -57,8 +61,9 @@ export default function Dashboard() {
         url: `${s3BaseUrl}/${file.key}`
       }));
 
-      setFiles(filesWithUrls);
+      setFiles(prev => append ? [...prev, ...filesWithUrls] : filesWithUrls);
       setUserMeta(data.meta || {});
+      setLastKey(data.lastEvaluatedKey || null);
     } catch (err) {
       console.error('❌ Error fetching files:', err);
     }
@@ -279,6 +284,20 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
+      {/* Add a Load More button below the file grid */}
+      {lastKey && (
+        <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+          <button
+            className="btn-primary"
+            onClick={() => fetchFiles(true)}
+            style={{ padding: '0.4rem 1.2rem', fontSize: '0.9rem' }}
+            disabled={loadingMore}
+          >
+            {loadingMore ? 'Loading...' : 'Load More'}
+          </button>
+        </div>
+      )}
 
 
       {lightboxOpen && (
